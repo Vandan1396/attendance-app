@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FlightPath — Attendance Manager</title>
+<style>
+  :root{
+    --navy-950:#081226;
+    --navy-900:#0d1a35;
+    --navy-800:#132a52;
+    --navy-700:#1c3a6e;
+    --navy-600:#274c8c;
+    --orange-500:#f2872e;
+    --orange-600:#e8601c;
+    --cream:#f6f4ee;
+    --green:#2fae66;
+    --amber:#f0a93c;
+    --red:#e5484d;
+    --text-hi:#f8fafc;
+    --text-mid:rgba(248,250,252,0.72);
+    --text-lo:rgba(248,250,252,0.48);
+    --radius:16px;
+    --display: ui-rounded, "Segoe UI Rounded", "Segoe UI", system-ui, sans-serif;
+    --body: system-ui, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:var(--body);
+    background:
+      radial-gradient(circle at 15% 0%, #163459 0%, transparent 55%),
+      radial-gradient(circle at 85% 100%, #0f2244 0%, transparent 50%),
+      var(--navy-950);
+    color:var(--text-hi);
+    min-height:100%;
+    overflow-x:hidden;
+  }
+  #app{max-width:480px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:78px; display:flex; flex-direction:column;}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--navy-700); border-radius:4px;}
+
+  /* ---------- utility ---------- */
+  .hidden{display:none !important;}
+  button{font-family:inherit; cursor:pointer;}
+  input,select{font-family:inherit;}
+  .fadein{animation:fadein .45s ease both;}
+  @keyframes fadein{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+  .stagger > *{animation:fadein .4s ease both;}
+  .stagger > *:nth-child(1){animation-delay:.02s;}
+  .stagger > *:nth-child(2){animation-delay:.06s;}
+  .stagger > *:nth-child(3){animation-delay:.10s;}
+  .stagger > *:nth-child(4){animation-delay:.14s;}
+  .stagger > *:nth-child(5){animation-delay:.18s;}
+  .stagger > *:nth-child(6){animation-delay:.22s;}
+  .stagger > *:nth-child(7){animation-delay:.26s;}
+  .stagger > *:nth-child(8){animation-delay:.30s;}
+  .stagger > *:nth-child(9){animation-delay:.34s;}
+  .stagger > *:nth-child(10){animation-delay:.38s;}
+  .stagger > *:nth-child(11){animation-delay:.42s;}
+
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.45;}}
+  @keyframes popIn{0%{transform:scale(.7); opacity:0;} 100%{transform:scale(1); opacity:1;}}
+  @keyframes float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);}}
+  @keyframes barfill{from{width:0;}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes confettiFall{to{transform:translateY(110vh) rotate(360deg); opacity:0;}}
+
+  /* ---------- setup wizard ---------- */
+  #setup{min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:28px 22px;}
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:26px; justify-content:center;}
+  .brand .plane{font-size:26px; animation:float 3s ease-in-out infinite;}
+  .brand h1{font-family:var(--display); font-size:22px; letter-spacing:.5px; margin:0; font-weight:800;}
+  .brand h1 span{color:var(--orange-500);}
+  .setup-card{background:linear-gradient(160deg,var(--navy-800),var(--navy-900)); border:1px solid rgba(255,255,255,.08); border-radius:22px; padding:26px 22px; box-shadow:0 20px 50px rgba(0,0,0,.4);}
+  .setup-card h2{font-family:var(--display); font-size:19px; margin:0 0 4px; font-weight:700;}
+  .setup-card p.sub{color:var(--text-mid); font-size:13px; margin:0 0 20px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12px; color:var(--text-mid); margin-bottom:6px; font-weight:600; letter-spacing:.3px; text-transform:uppercase;}
+  .field input, .field select{
+    width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.05); color:var(--text-hi); font-size:14.5px; outline:none;
+    transition:border-color .2s, background .2s;
+  }
+  .field input:focus, .field select:focus{border-color:var(--orange-500); background:rgba(255,255,255,.08);}
+  .field input[type=file]{padding:9px;}
+  .photo-row{display:flex; align-items:center; gap:14px;}
+  .avatar{width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,var(--orange-500),var(--orange-600)); display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:800; font-size:22px; color:#fff; overflow:hidden; flex-shrink:0; border:2px solid rgba(255,255,255,.15);}
+  .avatar img{width:100%; height:100%; object-fit:cover;}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:linear-gradient(135deg,var(--orange-500),var(--orange-600)); color:#fff; border:none;
+    padding:13px 20px; border-radius:12px; font-weight:700; font-size:14.5px; width:100%;
+    box-shadow:0 8px 20px rgba(232,96,28,.35); transition:transform .15s, box-shadow .15s;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn.ghost{background:rgba(255,255,255,.08); box-shadow:none; border:1px solid rgba(255,255,255,.14);}
+  .btn.small{width:auto; padding:8px 14px; font-size:12.5px;}
+  .step-dots{display:flex; gap:6px; justify-content:center; margin-top:18px;}
+  .step-dots span{width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.2); transition:.3s;}
+  .step-dots span.active{background:var(--orange-500); width:18px; border-radius:4px;}
+
+  /* ---------- header ---------- */
+  header{padding:18px 18px 14px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:20; background:linear-gradient(180deg, var(--navy-950) 70%, transparent); backdrop-filter:blur(6px);}
+  .hgroup{display:flex; align-items:center; gap:11px;}
+  header .avatar{width:42px;height:42px;font-size:15px; cursor:pointer;}
+  .hello{line-height:1.25;}
+  .hello .greet{font-size:11.5px; color:var(--text-lo); text-transform:uppercase; letter-spacing:.6px;}
+  .hello .name{font-family:var(--display); font-weight:700; font-size:16px;}
+  .bell-wrap{position:relative;}
+  .bell{width:40px;height:40px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; font-size:17px; position:relative;}
+  .bell .dot{position:absolute; top:6px; right:6px; width:9px; height:9px; border-radius:50%; background:var(--red); border:2px solid var(--navy-950); animation:pulse 1.6s infinite;}
+  .alerts-panel{position:absolute; top:48px; right:0; width:290px; background:var(--navy-800); border:1px solid rgba(255,255,255,.1); border-radius:14px; box-shadow:0 20px 40px rgba(0,0,0,.5); padding:10px; z-index:40; max-height:340px; overflow:auto;}
+  .alert-item{display:flex; gap:10px; padding:10px; border-radius:10px; margin-bottom:4px;}
+  .alert-item:hover{background:rgba(255,255,255,.05);}
+  .alert-ic{font-size:16px; flex-shrink:0;}
+  .alert-item .t1{font-size:13px; font-weight:600;}
+  .alert-item .t2{font-size:11.5px; color:var(--text-lo);}
+
+  main{flex:1; padding:2px 16px 30px;}
+  .section-title{font-family:var(--display); font-size:13px; text-transform:uppercase; letter-spacing:.8px; color:var(--text-lo); font-weight:700; margin:22px 2px 10px;}
+  .section-title:first-child{margin-top:6px;}
+
+  /* ---------- today banner / date nav ---------- */
+  .date-nav{display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:8px 10px; margin-bottom:14px;}
+  .date-nav button{background:rgba(255,255,255,.07); border:none; color:#fff; width:32px; height:32px; border-radius:9px; font-size:15px;}
+  .date-nav .dlabel{text-align:center;}
+  .date-nav .dlabel .dl1{font-weight:700; font-size:14px; font-family:var(--display);}
+  .date-nav .dlabel .dl2{font-size:11px; color:var(--text-lo);}
+
+  .banner-critical{background:linear-gradient(135deg,#7a1f1f,#4a1010); border:1px solid rgba(255,120,120,.3); border-radius:16px; padding:14px 16px; margin-bottom:14px; display:flex; gap:12px; align-items:center; animation:fadein .5s ease;}
+  .banner-critical .ic{font-size:24px; animation:pulse 1.6s infinite;}
+  .banner-critical b{display:block; font-size:14px;}
+  .banner-critical span{font-size:12px; color:rgba(255,255,255,.75);}
+
+  /* ---------- class cards (boarding pass style) ---------- */
+  .pass{
+    position:relative; background:linear-gradient(135deg,var(--navy-800),var(--navy-900));
+    border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:15px 16px; margin-bottom:12px;
+    display:flex; gap:12px; align-items:center; overflow:hidden;
+  }
+  .pass.done{opacity:.45;}
+  .pass.ongoing{border-color:var(--orange-500); box-shadow:0 0 0 1px var(--orange-500) inset;}
+  .pass::before{content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--stripe,var(--orange-500));}
+  .pass .time-block{text-align:center; min-width:56px;}
+  .pass .time-block .t{font-family:var(--display); font-weight:800; font-size:14px; line-height:1.2;}
+  .pass .time-block .dur{font-size:10px; color:var(--text-lo);}
+  .pass .divider{width:1px; align-self:stretch; background:repeating-linear-gradient(to bottom, rgba(255,255,255,.25) 0 4px, transparent 4px 8px);}
+  .pass .info{flex:1; min-width:0;}
+  .pass .info .sub{font-weight:700; font-size:14.5px; font-family:var(--display);}
+  .pass .info .meta{font-size:11.5px; color:var(--text-lo); margin-top:3px;}
+  .tag{display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; margin-right:5px; text-transform:uppercase; letter-spacing:.3px;}
+  .tag.lec{background:rgba(39,76,140,.5); color:#a9c3ef;}
+  .tag.lab{background:rgba(242,135,46,.22); color:var(--orange-500);}
+  .tag.lunch{background:rgba(255,255,255,.08); color:var(--text-lo);}
+  .mark-row{display:flex; gap:6px; margin-top:8px;}
+  .mark-btn{flex:1; padding:6px 4px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:var(--text-mid); font-size:11px; font-weight:700;}
+  .mark-btn.present.active{background:var(--green); color:#fff; border-color:var(--green);}
+  .mark-btn.absent.active{background:var(--red); color:#fff; border-color:var(--red);}
+  .mark-btn.cancel.active{background:var(--text-lo); color:var(--navy-950); border-color:var(--text-lo);}
+  .marked-badge{font-size:11px; font-weight:700; padding:4px 10px; border-radius:8px; margin-top:6px; display:inline-block;}
+  .marked-badge.present{background:rgba(47,174,102,.18); color:var(--green);}
+  .marked-badge.absent{background:rgba(229,72,77,.18); color:var(--red);}
+  .marked-badge.cancel{background:rgba(255,255,255,.1); color:var(--text-mid);}
+
+  .empty-state{text-align:center; padding:40px 20px; color:var(--text-lo);}
+  .empty-state .em{font-size:38px; margin-bottom:10px; display:block;}
+
+  /* ---------- subjects ---------- */
+  .overall-card{background:linear-gradient(135deg,var(--orange-600),#c94a12); border-radius:20px; padding:20px; margin-bottom:16px; position:relative; overflow:hidden;}
+  .overall-card::after{content:"✈"; position:absolute; right:-6px; bottom:-14px; font-size:90px; opacity:.12; transform:rotate(-18deg);}
+  .overall-card .big{font-family:var(--display); font-size:40px; font-weight:800; line-height:1;}
+  .overall-card .big span{font-size:18px; opacity:.7;}
+  .overall-card .lbl{font-size:12.5px; text-transform:uppercase; letter-spacing:.6px; opacity:.85; margin-top:4px;}
+  .overall-card .note{margin-top:10px; font-size:12.5px; background:rgba(255,255,255,.18); display:inline-block; padding:5px 11px; border-radius:8px; font-weight:600;}
+
+  .subj-card{background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px; margin-bottom:10px;}
+  .subj-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .subj-top .nm{font-weight:700; font-size:14px; font-family:var(--display);}
+  .subj-top .ty{font-size:11px; color:var(--text-lo); margin-top:2px;}
+  .subj-pct{font-family:var(--display); font-weight:800; font-size:19px;}
+  .bar-track{height:7px; background:rgba(255,255,255,.08); border-radius:6px; margin:10px 0 8px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:6px; animation:barfill 1s ease;}
+  .subj-bottom{display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--text-lo);}
+  .subj-status{font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:7px;}
+
+  /* ---------- timetable ---------- */
+  .day-tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px;}
+  .day-tabs button{flex-shrink:0; padding:8px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:var(--text-mid); font-size:12.5px; font-weight:700;}
+  .day-tabs button.active{background:var(--orange-500); color:#fff; border-color:var(--orange-500);}
+
+  /* ---------- calendar ---------- */
+  .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  .cal-head .m{font-family:var(--display); font-weight:800; font-size:16px;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+  .cal-dow{text-align:center; font-size:10.5px; color:var(--text-lo); font-weight:700; padding-bottom:4px;}
+  .cal-cell{aspect-ratio:1/1; border-radius:9px; background:rgba(255,255,255,.035); display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11.5px; position:relative; border:1px solid transparent;}
+  .cal-cell.today{border-color:var(--orange-500); background:rgba(242,135,46,.12);}
+  .cal-cell .dnum{font-weight:700;}
+  .cal-cell .evdot{width:5px; height:5px; border-radius:50%; margin-top:2px;}
+  .cal-cell.fest .evdot{background:var(--amber);}
+  .cal-cell.exam .evdot{background:var(--red);}
+  .cal-legend{display:flex; gap:16px; margin:12px 2px 4px; font-size:11.5px; color:var(--text-mid);}
+  .cal-legend span{display:inline-flex; align-items:center; gap:5px;}
+  .leg-dot{width:7px;height:7px;border-radius:50%;}
+
+  .fest-list-item{display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); border-radius:13px; padding:12px 14px; margin-bottom:9px;}
+  .fest-date-chip{background:var(--navy-700); border-radius:10px; text-align:center; padding:6px 10px; min-width:48px;}
+  .fest-date-chip .dd{font-family:var(--display); font-weight:800; font-size:16px; line-height:1;}
+  .fest-date-chip .mm{font-size:9.5px; text-transform:uppercase; color:var(--text-lo);}
+  .fest-info .nm{font-weight:600; font-size:13.5px;}
+  .fest-info .dist{font-size:11px; color:var(--text-lo);}
+
+  /* exam boarding pass */
+  .exam-pass{background:linear-gradient(135deg,var(--navy-800),var(--navy-900)); border:1px dashed rgba(255,255,255,.25); border-radius:18px; padding:16px; margin-bottom:14px; position:relative;}
+  .exam-pass .top{display:flex; justify-content:space-between; align-items:center;}
+  .exam-pass .code{font-size:10px; letter-spacing:1.5px; color:var(--text-lo); text-transform:uppercase;}
+  .exam-pass .subj{font-family:var(--display); font-weight:800; font-size:16.5px; margin:5px 0 10px;}
+  .exam-pass .rowinfo{display:flex; justify-content:space-between; border-top:1px dashed rgba(255,255,255,.2); padding-top:10px;}
+  .exam-pass .rowinfo div{font-size:11px; color:var(--text-lo);}
+  .exam-pass .rowinfo b{display:block; font-size:13.5px; color:var(--text-hi); font-weight:700; margin-top:2px;}
+  .exam-pass .cd{position:absolute; top:14px; right:16px; background:var(--orange-500); font-size:10.5px; font-weight:800; padding:4px 9px; border-radius:20px;}
+  .exam-pass .cd.today{background:var(--red); animation:pulse 1.4s infinite;}
+
+  /* profile */
+  .profile-hero{text-align:center; padding:20px 0 10px;}
+  .profile-hero .avatar{width:88px; height:88px; font-size:30px; margin:0 auto 12px;}
+  .profile-hero h2{font-family:var(--display); margin:0; font-size:19px;}
+  .profile-hero p{margin:3px 0 0; font-size:12.5px; color:var(--text-lo);}
+  .info-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px;}
+  .info-card{background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:11px 13px;}
+  .info-card .lbl{font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-lo);}
+  .info-card .val{font-size:13.5px; font-weight:600; margin-top:3px; word-break:break-word;}
+
+  /* bottom nav */
+  nav.bottomnav{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:rgba(13,26,53,.92); backdrop-filter:blur(14px); border-top:1px solid rgba(255,255,255,.08); display:flex; z-index:30;}
+  nav.bottomnav button{flex:1; background:none; border:none; color:var(--text-lo); display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 0 8px; font-size:10px; font-weight:600;}
+  nav.bottomnav button .ic{font-size:19px; transition:transform .2s;}
+  nav.bottomnav button.active{color:var(--orange-500);}
+  nav.bottomnav button.active .ic{transform:translateY(-2px);}
+
+  /* modal / birthday */
+  .modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; z-index:100; padding:24px;}
+  .modal-card{background:linear-gradient(160deg,var(--navy-800),var(--navy-900)); border-radius:22px; padding:28px 22px; text-align:center; max-width:340px; width:100%; animation:popIn .4s cubic-bezier(.2,1.4,.4,1); border:1px solid rgba(255,255,255,.1); position:relative; overflow:hidden;}
+  .modal-card h2{font-family:var(--display); font-size:21px; margin:10px 0 6px;}
+  .modal-card p{font-size:13.5px; color:var(--text-mid); margin:0 0 18px;}
+  .confetti{position:fixed; top:-10px; width:8px; height:14px; z-index:99; animation:confettiFall linear forwards;}
+
+  .toast{position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--navy-700); padding:10px 18px; border-radius:30px; font-size:12.5px; font-weight:600; box-shadow:0 10px 25px rgba(0,0,0,.4); z-index:80; animation:fadein .3s ease;}
+
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= SETUP WIZARD ================= -->
+  <div id="setup" class="hidden">
+    <div class="brand"><span class="plane">✈️</span><h1>Flight<span>Path</span></h1></div>
+    <div class="setup-card fadein" id="setup-card"></div>
+  </div>
+
+  <!-- ================= MAIN APP ================= -->
+  <div id="main" class="hidden">
+    <header>
+      <div class="hgroup">
+        <div class="avatar" id="hdr-avatar" onclick="goTab('profile')">?</div>
+        <div class="hello">
+          <div class="greet" id="hdr-greet">Hello</div>
+          <div class="name" id="hdr-name">Student</div>
+        </div>
+      </div>
+      <div class="bell-wrap">
+        <button class="bell" id="bell-btn">🔔<span class="dot hidden" id="bell-dot"></span></button>
+        <div class="alerts-panel hidden" id="alerts-panel"></div>
+      </div>
+    </header>
+
+    <main id="content"></main>
+
+    <nav class="bottomnav">
+      <button data-tab="today" class="active"><span class="ic">🛫</span>Today</button>
+      <button data-tab="timetable"><span class="ic">🗓️</span>Timetable</button>
+      <button data-tab="subjects"><span class="ic">📊</span>Subjects</button>
+      <button data-tab="calendar"><span class="ic">🎉</span>Calendar</button>
+      <button data-tab="exams"><span class="ic">🎫</span>Exams</button>
+      <button data-tab="profile"><span class="ic">👤</span>Profile</button>
+    </nav>
+  </div>
+</div>
+
+<script>
+/* ===================================================================
+   DATA
+=================================================================== */
+const SEED_DATE = '2026-08-22'; // attendance totals below are accurate AS OF this date
+
+const SUBJECT_META = {
+  'sustain-lec': {name:'Sustainability Engineering', type:'Lecture'},
+  'daa-lab':     {name:'Design & Analysis of Algorithms', type:'Lab'},
+  'daa-lec':     {name:'Design & Analysis of Algorithms', type:'Lecture'},
+  'python-lab':  {name:'Programming with Python', type:'Lab'},
+  'python-lec':  {name:'Programming with Python', type:'Lecture'},
+  'se-lab':      {name:'Software Engineering', type:'Lab'},
+  'se-lec':      {name:'Software Engineering', type:'Lecture'},
+  'ai-lab':      {name:'Artificial Intelligence', type:'Lab'},
+  'ai-lec':      {name:'Artificial Intelligence', type:'Lecture'},
+  'wd-lab':      {name:'Web Development', type:'Lab'},
+  'wd-lec':      {name:'Web Development', type:'Lecture'},
+};
+
+const SEED_STATS = {
+  'sustain-lec': {att:14, miss:2, off:0},
+  'daa-lab':     {att:3,  miss:0, off:0},
+  'daa-lec':     {att:14, miss:6, off:0},
+  'python-lab':  {att:5,  miss:0, off:0},
+  'python-lec':  {att:11, miss:2, off:1},
+  'se-lab':      {att:4,  miss:1, off:0},
+  'se-lec':      {att:16, miss:2, off:0},
+  'ai-lab':      {att:4,  miss:1, off:1},
+  'ai-lec':      {att:15, miss:5, off:1},
+  'wd-lab':      {att:6,  miss:0, off:0},
+  'wd-lec':      {att:13, miss:2, off:1},
+};
+
+// weekly timetable — filtered for: DAA/Python/SE practicals = Batch D (1D08), AI practical = Batch C (1C08), no OE lab
+const TIMETABLE = {
+  Monday:[
+    {s:'10:00',e:'10:50', id:'python-lec', room:'A218', fac:'Mr. Pravin Savariya'},
+    {s:'10:55',e:'11:45', id:'wd-lec', room:'A218', fac:'Mr. Harshal Makwana'},
+    {s:'11:50',e:'12:40', id:'se-lec', room:'A218', fac:'Ms. Sushama Sainwar'},
+    {s:'12:40',e:'13:25', id:'lunch'},
+    {s:'13:25',e:'14:15', id:'wd-lab', room:'D203A', fac:'Mr. Harshal Makwana'},
+    {s:'14:20',e:'15:10', id:'python-lab', room:'D203E', fac:'Mr. Pravin Savariya'},
+    {s:'15:15',e:'16:05', id:'daa-lec', room:'A218', fac:'Dr. Malay Bhatt'},
+    {s:'16:10',e:'17:00', id:'sustain-lec', room:'A218', fac:'—'},
+  ],
+  Tuesday:[
+    {s:'09:05',e:'09:55', id:'se-lec', room:'A218', fac:'Ms. Sushama Sainwar'},
+    {s:'10:00',e:'10:50', id:'daa-lec', room:'A218', fac:'Dr. Malay Bhatt'},
+    {s:'10:55',e:'12:40', id:'se-lab', room:'D303A', fac:'Ms. Sushama Sainwar'},
+    {s:'12:40',e:'13:25', id:'lunch'},
+    {s:'13:25',e:'14:15', id:'python-lab', room:'D203E', fac:'Mr. Pravin Savariya'},
+  ],
+  Wednesday:[
+    {s:'10:00',e:'10:50', id:'se-lec', room:'A218', fac:'Ms. Sushama Sainwar'},
+    {s:'10:55',e:'11:45', id:'daa-lec', room:'A218', fac:'Dr. Malay Bhatt'},
+    {s:'12:40',e:'13:25', id:'lunch'},
+    {s:'15:15',e:'16:05', id:'ai-lec', room:'A218', fac:'Mr. Sanjay Patel'},
+    {s:'16:10',e:'17:00', id:'sustain-lec', room:'A218', fac:'—'},
+  ],
+  Thursday:[
+    {s:'10:00',e:'10:50', id:'wd-lec', room:'A218', fac:'Mr. Harshal Makwana'},
+    {s:'10:55',e:'11:45', id:'ai-lec', room:'A218', fac:'Mr. Sanjay Patel'},
+    {s:'11:50',e:'12:40', id:'python-lec', room:'A218', fac:'Mr. Pravin Savariya'},
+    {s:'12:40',e:'13:25', id:'lunch'},
+    {s:'13:25',e:'15:10', id:'ai-lab', room:'D203A', fac:'Mr. Sanjay Patel'},
+  ],
+  Friday:[
+    {s:'09:05',e:'09:55', id:'python-lec', room:'A218', fac:'Mr. Pravin Savariya'},
+    {s:'10:00',e:'10:50', id:'daa-lec', room:'A218', fac:'Dr. Malay Bhatt'},
+    {s:'10:55',e:'11:45', id:'wd-lec', room:'A218', fac:'Mr. Harshal Makwana'},
+    {s:'11:45',e:'13:25', id:'lunch'},
+    {s:'13:25',e:'15:10', id:'daa-lab', room:'D303E', fac:'Dr. Malay Bhatt'},
+  ],
+  Saturday:[],
+  Sunday:[]
+};
+
+const EXAM_TIMETABLE = [
+  {date:'2026-08-24', day:'Monday',    s:'09:30 AM', e:'10:30 AM', subj:'Programming with Python'},
+  {date:'2026-08-24', day:'Monday',    s:'01:30 PM', e:'02:30 PM', subj:'Software Engineering'},
+  {date:'2026-08-25', day:'Tuesday',   s:'09:30 AM', e:'10:30 AM', subj:'Design and Analysis of Algorithms'},
+  {date:'2026-08-25', day:'Tuesday',   s:'01:30 PM', e:'02:30 PM', subj:'Web Development'},
+  {date:'2026-08-26', day:'Wednesday', s:'09:30 AM', e:'10:30 AM', subj:'Artificial Intelligence'},
+  {date:'2026-08-26', day:'Wednesday', s:'01:30 PM', e:'02:30 PM', subj:'Sustainability Engineering'},
+];
+
+const FESTIVALS = {
+  '2026-08-15':'Independence Day',
+  '2026-08-28':'Raksha Bandhan',
+  '2026-09-04':'Janmashtami',
+  '2026-09-13':'Ganesh Chaturthi',
+  '2026-10-11':'Navratri Begins',
+  '2026-10-20':'Dussehra (Vijaya Dashami)',
+  '2026-10-26':'Sharad Purnima',
+  '2026-11-09':'Diwali',
+  '2026-11-11':'Bhai Beej',
+  '2026-11-24':'Dev Diwali / Gurunanak Jayanti',
+  '2026-12-20':'Gita Jayanti',
+};
+
+const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+/* ===================================================================
+   STORAGE HELPERS
+=================================================================== */
+async function storGet(key, def){
+  try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : def; }
+  catch(e){ return def; }
+}
+async function storSet(key, val){
+  try{ await window.storage.set(key, JSON.stringify(val), false); }
+  catch(e){ console.error('storage set failed', e); }
+}
+
+let PROFILE = null;
+let LOG = {}; // { 'YYYY-MM-DD': { subjectId: 'present'|'absent'|'cancel' } }
+let calMonthOffset = 0; // for calendar nav, relative to current real month
+let selectedDateOffset = 0; // for today-tab date nav, relative to real today
+let todayFilter = 'remaining'; // 'remaining' | 'all'
+
+/* ===================================================================
+   INIT
+=================================================================== */
+(async function init(){
+  PROFILE = await storGet('profile', null);
+  LOG = await storGet('attendance_log', {});
+  if(!PROFILE || !PROFILE.setupDone){
+    renderSetup();
+  } else {
+    boot();
+  }
+})();
+
+function boot(){
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('main').classList.remove('hidden');
+  updateHeader();
+  checkBirthday();
+  goTab('today');
+  document.querySelectorAll('nav.bottomnav button').forEach(b=>{
+    b.addEventListener('click', ()=>goTab(b.dataset.tab));
+  });
+  document.getElementById('bell-btn').addEventListener('click', toggleAlerts);
+  document.addEventListener('click', (e)=>{
+    const panel = document.getElementById('alerts-panel');
+    if(!panel.contains(e.target) && e.target.id!=='bell-btn' && !panel.classList.contains('hidden')){
+      panel.classList.add('hidden');
+    }
+  });
+}
+
+function initials(name){
+  if(!name) return '?';
+  return name.trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+}
+
+function updateHeader(){
+  const av = document.getElementById('hdr-avatar');
+  av.innerHTML = PROFILE.photo ? `<img src="${PROFILE.photo}">` : initials(PROFILE.name);
+  const h = new Date().getHours();
+  document.getElementById('hdr-greet').textContent = h<12?'Good morning':(h<17?'Good afternoon':'Good evening');
+  document.getElementById('hdr-name').textContent = PROFILE.name.split(' ')[0];
+}
+
+/* ===================================================================
+   SETUP WIZARD
+=================================================================== */
+let wizStep = 1;
+let wizData = {photo:null};
+
+function renderSetup(){
+  document.getElementById('setup').classList.remove('hidden');
+  wizStep = 1;
+  drawWizard();
+}
+
+function drawWizard(){
+  const card = document.getElementById('setup-card');
+  let html = '';
+  if(wizStep===1){
+    html = `
+      <h2>Welcome aboard 👋</h2>
+      <p class="sub">Let's set up your attendance cockpit. Step 1 of 3.</p>
+      <div class="photo-row" style="margin-bottom:18px;">
+        <div class="avatar" id="wiz-avatar">${wizData.photo?`<img src="${wizData.photo}">`:'📷'}</div>
+        <div style="flex:1;">
+          <label style="font-size:12px;color:var(--text-mid);font-weight:600;">Profile photo (optional)</label>
+          <input type="file" accept="image/*" id="wiz-photo-input" style="margin-top:6px;">
+        </div>
+      </div>
+      <div class="field"><label>Full Name</label><input id="w-name" type="text" placeholder="e.g. Aarav Patel" value="${wizData.name||''}"></div>
+      <div class="field"><label>Enrolment No.</label><input id="w-enroll" type="text" placeholder="e.g. 23DIT0XX" value="${wizData.enroll||''}"></div>
+      <div class="field"><label>Date of Birth</label><input id="w-dob" type="date" value="${wizData.dob||''}"></div>
+      <button class="btn" id="wiz-next">Continue →</button>
+    `;
+  } else if(wizStep===2){
+    html = `
+      <h2>Stay in touch 📬</h2>
+      <p class="sub">We'll use this only inside your dashboard. Step 2 of 3.</p>
+      <div class="field"><label>Email</label><input id="w-email" type="email" placeholder="you@example.com" value="${wizData.email||''}"></div>
+      <div class="field"><label>Mobile Number</label><input id="w-mobile" type="tel" placeholder="+91 90000 00000" value="${wizData.mobile||''}"></div>
+      <div class="field-row">
+        <div class="field"><label>Program</label><input id="w-program" type="text" placeholder="B.Tech IT" value="${wizData.program||'B.Tech Information Technology'}"></div>
+        <div class="field"><label>Semester</label><input id="w-sem" type="text" placeholder="5" value="${wizData.sem||'5'}"></div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn ghost" id="wiz-back" style="width:auto;">← Back</button>
+        <button class="btn" id="wiz-next">Continue →</button>
+      </div>
+    `;
+  } else {
+    html = `
+      <h2>Ready for takeoff 🛫</h2>
+      <p class="sub">Review your details, then start your journey.</p>
+      <div class="info-grid" style="margin-top:0;">
+        <div class="info-card"><div class="lbl">Name</div><div class="val">${wizData.name||'-'}</div></div>
+        <div class="info-card"><div class="lbl">Enrolment</div><div class="val">${wizData.enroll||'-'}</div></div>
+        <div class="info-card"><div class="lbl">Program</div><div class="val">${wizData.program||'-'}</div></div>
+        <div class="info-card"><div class="lbl">Semester</div><div class="val">${wizData.sem||'-'}</div></div>
+        <div class="info-card"><div class="lbl">Email</div><div class="val">${wizData.email||'-'}</div></div>
+        <div class="info-card"><div class="lbl">Mobile</div><div class="val">${wizData.mobile||'-'}</div></div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:18px;">
+        <button class="btn ghost" id="wiz-back" style="width:auto;">← Back</button>
+        <button class="btn" id="wiz-finish">🎉 Start using FlightPath</button>
+      </div>
+    `;
+  }
+  card.innerHTML = html;
+  const dots = document.createElement('div');
+  dots.className='step-dots';
+  dots.innerHTML = [1,2,3].map(n=>`<span class="${n===wizStep?'active':''}"></span>`).join('');
+  card.appendChild(dots);
+
+  if(wizStep===1){
+    document.getElementById('wiz-photo-input').addEventListener('change', handlePhotoUpload);
+    document.getElementById('wiz-next').addEventListener('click', ()=>{
+      wizData.name = document.getElementById('w-name').value.trim() || 'Student';
+      wizData.enroll = document.getElementById('w-enroll').value.trim();
+      wizData.dob = document.getElementById('w-dob').value;
+      wizStep=2; drawWizard();
+    });
+  } else if(wizStep===2){
+    document.getElementById('wiz-back').addEventListener('click', ()=>{wizStep=1; drawWizard();});
+    document.getElementById('wiz-next').addEventListener('click', ()=>{
+      wizData.email = document.getElementById('w-email').value.trim();
+      wizData.mobile = document.getElementById('w-mobile').value.trim();
+      wizData.program = document.getElementById('w-program').value.trim() || 'B.Tech Information Technology';
+      wizData.sem = document.getElementById('w-sem').value.trim() || '5';
+      wizStep=3; drawWizard();
+    });
+  } else {
+    document.getElementById('wiz-back').addEventListener('click', ()=>{wizStep=2; drawWizard();});
+    document.getElementById('wiz-finish').addEventListener('click', finishSetup);
+  }
+}
+
+function handlePhotoUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const img = new Image();
+    img.onload = function(){
+      const canvas = document.createElement('canvas');
+      const maxDim = 240;
+      let w=img.width, h=img.height;
+      if(w>h){ if(w>maxDim){h=h*maxDim/w; w=maxDim;} } else { if(h>maxDim){w=w*maxDim/h; h=maxDim;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      wizData.photo = canvas.toDataURL('image/jpeg',0.75);
+      drawWizard();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function finishSetup(){
+  PROFILE = {
+    name: wizData.name, enroll: wizData.enroll, dob: wizData.dob, email: wizData.email,
+    mobile: wizData.mobile, program: wizData.program, sem: wizData.sem, photo: wizData.photo || null,
+    setupDone: true
+  };
+  await storSet('profile', PROFILE);
+  boot();
+  showToast('Welcome, '+PROFILE.name.split(' ')[0]+'! 🎉');
+}
+
+/* ===================================================================
+   BIRTHDAY CHECK
+=================================================================== */
+function checkBirthday(){
+  if(!PROFILE.dob) return;
+  const dob = new Date(PROFILE.dob+'T00:00:00');
+  const now = new Date();
+  if(dob.getMonth()===now.getMonth() && dob.getDate()===now.getDate()){
+    launchConfetti();
+    const bg = document.createElement('div');
+    bg.className='modal-bg';
+    bg.innerHTML = `<div class="modal-card">
+      <div style="font-size:44px;">🎂</div>
+      <h2>Happy Birthday, ${PROFILE.name.split(' ')[0]}!</h2>
+      <p>Wishing you a fantastic year ahead — and maybe a 100% attendance streak too 😉</p>
+      <button class="btn" id="bday-close">Thank you!</button>
+    </div>`;
+    document.body.appendChild(bg);
+    document.getElementById('bday-close').addEventListener('click', ()=>bg.remove());
+  }
+}
+function launchConfetti(){
+  const colors=['#f2872e','#2fae66','#f0a93c','#e5484d','#f8fafc'];
+  for(let i=0;i<40;i++){
+    const c = document.createElement('div');
+    c.className='confetti';
+    c.style.left = Math.random()*100+'vw';
+    c.style.background = colors[Math.floor(Math.random()*colors.length)];
+    c.style.animationDuration = (2.2+Math.random()*1.8)+'s';
+    c.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(), 4200);
+  }
+}
+
+/* ===================================================================
+   ATTENDANCE COMPUTATION
+=================================================================== */
+function computeStats(subjectId){
+  let {att, miss, off} = SEED_STATS[subjectId];
+  for(const date in LOG){
+    if(date <= SEED_DATE) continue;
+    const entry = LOG[date][subjectId];
+    if(!entry) continue;
+    if(entry==='present') att++;
+    else if(entry==='absent') miss++;
+    else if(entry==='cancel') off++;
+  }
+  const tot = att+miss;
+  const pct = tot>0 ? (att/tot*100) : 100;
+  let canMiss=null, need=null;
+  if(tot>0){
+    if(pct>=75){
+      canMiss = Math.floor(att/0.75 - tot);
+    } else {
+      need = Math.ceil((0.75*tot - att)/0.25);
+    }
+  }
+  return {att,miss,off,tot,pct,canMiss,need};
+}
+function computeOverall(){
+  let att=0,miss=0,off=0;
+  for(const id in SUBJECT_META){
+    const s = computeStats(id);
+    att+=s.att; miss+=s.miss; off+=s.off;
+  }
+  const tot=att+miss;
+  const pct = tot>0?(att/tot*100):100;
+  const canMiss = pct>=75 ? Math.floor(att/0.75-tot) : null;
+  const need = pct<75 ? Math.ceil((0.75*tot-att)/0.25) : null;
+  return {att,miss,off,tot,pct,canMiss,need};
+}
+function pctColor(pct){
+  if(pct>=85) return 'var(--green)';
+  if(pct>=75) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+/* ===================================================================
+   DATE HELPERS
+=================================================================== */
+function isoDate(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function addDays(base, n){ const d=new Date(base); d.setDate(d.getDate()+n); return d; }
+function dayNameOf(d){ return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()]; }
+function fmtNice(d){ return d.toLocaleDateString('en-US',{weekday:'long', month:'short', day:'numeric'}); }
+function toMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+function fmt12(hhmm){
+  const [h,m]=hhmm.split(':').map(Number);
+  const ap = h>=12?'PM':'AM';
+  let hh = h%12; if(hh===0) hh=12;
+  return hh+':'+String(m).padStart(2,'0')+' '+ap;
+}
+function daysUntil(dateStr){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateStr+'T00:00:00');
+  return Math.round((target-today)/86400000);
+}
+
+/* ===================================================================
+   ALERTS
+=================================================================== */
+function getAlerts(){
+  const alerts = [];
+  // exams
+  EXAM_TIMETABLE.forEach(ex=>{
+    const d = daysUntil(ex.date);
+    if(d>=0 && d<=7){
+      alerts.push({ic:'🎫', t1: ex.subj+' exam', t2: d===0?'Today · '+ex.s : d===1?'Tomorrow · '+ex.s : 'In '+d+' days · '+ex.s, pri: d<=1?0:1});
+    }
+  });
+  // festivals
+  for(const date in FESTIVALS){
+    const d = daysUntil(date);
+    if(d>=0 && d<=10){
+      alerts.push({ic:'🎉', t1: FESTIVALS[date], t2: d===0?'Today':(d===1?'Tomorrow':'In '+d+' days'), pri:2});
+    }
+  }
+  // low attendance
+  for(const id in SUBJECT_META){
+    const s = computeStats(id);
+    if(s.tot>0 && s.pct<75){
+      alerts.push({ic:'⚠️', t1: SUBJECT_META[id].name+' ('+SUBJECT_META[id].type+')', t2: 'Below 75% — attend next '+s.need+' to recover', pri:0});
+    } else if(s.tot>0 && s.pct<80){
+      alerts.push({ic:'🟡', t1: SUBJECT_META[id].name+' ('+SUBJECT_META[id].type+')', t2: 'At risk — only '+s.canMiss+' can be missed', pri:1});
+    }
+  }
+  alerts.sort((a,b)=>a.pri-b.pri);
+  return alerts;
+}
+
+function toggleAlerts(){
+  const panel = document.getElementById('alerts-panel');
+  if(!panel.classList.contains('hidden')){ panel.classList.add('hidden'); return; }
+  const alerts = getAlerts();
+  panel.innerHTML = alerts.length ? alerts.map(a=>`
+    <div class="alert-item"><div class="alert-ic">${a.ic}</div><div><div class="t1">${a.t1}</div><div class="t2">${a.t2}</div></div></div>
+  `).join('') : `<div style="padding:16px; text-align:center; color:var(--text-lo); font-size:12.5px;">All clear — nothing urgent 🌤️</div>`;
+  panel.classList.remove('hidden');
+}
+
+function refreshBell(){
+  const alerts = getAlerts();
+  document.getElementById('bell-dot').classList.toggle('hidden', alerts.length===0);
+}
+
+/* ===================================================================
+   TAB ROUTER
+=================================================================== */
+function goTab(tab){
+  document.querySelectorAll('nav.bottomnav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  const content = document.getElementById('content');
+  content.classList.remove('fadein'); void content.offsetWidth; content.classList.add('fadein');
+  refreshBell();
+  if(tab==='today') renderToday();
+  else if(tab==='timetable') renderTimetable();
+  else if(tab==='subjects') renderSubjects();
+  else if(tab==='calendar') renderCalendar();
+  else if(tab==='exams') renderExams();
+  else if(tab==='profile') renderProfile();
+}
+
+/* ===================================================================
+   TODAY TAB
+=================================================================== */
+function renderToday(){
+  const content = document.getElementById('content');
+  const realNow = new Date();
+  const viewDate = addDays(new Date(realNow.getFullYear(),realNow.getMonth(),realNow.getDate()), selectedDateOffset);
+  const iso = isoDate(viewDate);
+  const dName = dayNameOf(viewDate);
+  const isRealToday = selectedDateOffset===0;
+  const nowMin = isRealToday ? (realNow.getHours()*60+realNow.getMinutes()) : -1;
+
+  let periods = (TIMETABLE[dName]||[]).map(p=>({...p, sMin:toMin(p.s), eMin:toMin(p.e)}));
+
+  let displayPeriods = periods;
+  const showToggle = isRealToday && periods.some(p=>p.id!=='lunch');
+  if(isRealToday && todayFilter==='remaining'){
+    displayPeriods = periods.filter(p=> p.eMin > nowMin);
+  }
+
+  const alerts = getAlerts();
+  const urgentExam = EXAM_TIMETABLE.find(ex=>daysUntil(ex.date)===0 || daysUntil(ex.date)===1);
+
+  let html = `
+    <div class="date-nav">
+      <button id="dn-prev">‹</button>
+      <div class="dlabel"><div class="dl1">${fmtNice(viewDate)}</div><div class="dl2">${isRealToday?'Today':(selectedDateOffset<0?Math.abs(selectedDateOffset)+' day(s) ago':'in '+selectedDateOffset+' day(s)')}</div></div>
+      <button id="dn-next">›</button>
+    </div>
+  `;
+
+  if(urgentExam){
+    const d = daysUntil(urgentExam.date);
+    html += `<div class="banner-critical"><div class="ic">🚨</div><div><b>${urgentExam.subj} exam ${d===0?'is today':'is tomorrow'}!</b><span>${urgentExam.s} – ${urgentExam.e} · Room A218</span></div></div>`;
+  }
+
+  if(showToggle){
+    html += `<div style="display:flex; gap:8px; margin-bottom:12px;">
+      <button class="btn small ${todayFilter==='remaining'?'':'ghost'}" id="filt-remain">Remaining</button>
+      <button class="btn small ${todayFilter==='all'?'':'ghost'}" id="filt-all">Full day</button>
+    </div>`;
+  }
+
+  html += `<div class="section-title">${isRealToday? "Today's Schedule":dName+"'s Schedule"}</div>`;
+
+  if(displayPeriods.length===0){
+    html += `<div class="empty-state fadein"><span class="em">${(dName==='Saturday'||dName==='Sunday')?'🌴':'🎉'}</span>${
+      (dName==='Saturday'||dName==='Sunday') ? 'No classes scheduled — enjoy your day off!' :
+      (isRealToday && todayFilter==='remaining' ? 'No more classes left for today. Nicely done! ✅' : 'No classes scheduled.')
+    }</div>`;
+  } else {
+    html += `<div class="stagger">` + displayPeriods.map(p=>renderPeriodCard(p, iso, nowMin, isRealToday)).join('') + `</div>`;
+  }
+
+  content.innerHTML = html;
+  document.getElementById('dn-prev').addEventListener('click', ()=>{selectedDateOffset--; renderToday();});
+  document.getElementById('dn-next').addEventListener('click', ()=>{selectedDateOffset++; renderToday();});
+  if(showToggle){
+    document.getElementById('filt-remain').addEventListener('click', ()=>{todayFilter='remaining'; renderToday();});
+    document.getElementById('filt-all').addEventListener('click', ()=>{todayFilter='all'; renderToday();});
+  }
+  document.querySelectorAll('.mark-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const {date, subj, status} = btn.dataset;
+      if(date <= SEED_DATE){ showToast("This date is already included in your starting totals."); return; }
+      if(!LOG[date]) LOG[date]={};
+      LOG[date][subj] = (LOG[date][subj]===status) ? undefined : status;
+      if(LOG[date][subj]===undefined) delete LOG[date][subj];
+      await storSet('attendance_log', LOG);
+      renderToday();
+      refreshBell();
+    });
+  });
+}
+
+function renderPeriodCard(p, iso, nowMin, isRealToday){
+  if(p.id==='lunch'){
+    return `<div class="pass" style="--stripe:rgba(255,255,255,.25); opacity:.65;">
+      <div class="time-block"><div class="t">${fmt12(p.s)}</div><div class="dur">${fmt12(p.e)}</div></div>
+      <div class="divider"></div>
+      <div class="info"><div class="sub">🍴 Lunch Break</div></div>
+    </div>`;
+  }
+  const meta = SUBJECT_META[p.id];
+  const isLab = meta.type==='Lab';
+  let state='upcoming';
+  if(isRealToday){
+    if(p.eMin<=nowMin) state='done';
+    else if(p.sMin<=nowMin) state='ongoing';
+  }
+  const marked = LOG[iso] && LOG[iso][p.id];
+  const canMark = isRealToday ? (p.sMin<=nowMin) : true; // allow marking past/ongoing today, or any period on other (future/past) selected days
+  let markHtml = '';
+  if(iso>SEED_DATE && canMark){
+    const badgeLabel = marked==='present'?'✔ Marked Present':marked==='absent'?'✘ Marked Absent':marked==='cancel'?'⦸ Marked Cancelled':'';
+    const btn = (status,label)=>`<button class="mark-btn ${status}${marked===status?' active':''}" data-date="${iso}" data-subj="${p.id}" data-status="${status}">${label}</button>`;
+    markHtml = (marked ? `<div class="marked-badge ${marked}">${badgeLabel} · tap to change</div>` : '') +
+      `<div class="mark-row"${marked?' style="margin-top:6px;"':''}>
+        ${btn('present','Present')}${btn('absent','Absent')}${btn('cancel','Cancelled')}
+      </div>`;
+  }
+  let stripe = isLab ? 'var(--orange-500)':'var(--navy-600)';
+  return `<div class="pass ${state}" style="--stripe:${stripe};">
+      <div class="time-block"><div class="t">${fmt12(p.s)}</div><div class="dur">${fmt12(p.e)}</div></div>
+      <div class="divider"></div>
+      <div class="info">
+        <div class="sub">${meta.name}</div>
+        <div class="meta"><span class="tag ${isLab?'lab':'lec'}">${meta.type}</span>Room ${p.room} · ${p.fac}</div>
+        ${markHtml}
+      </div>
+    </div>`;
+}
+
+/* ===================================================================
+   TIMETABLE TAB
+=================================================================== */
+let ttDay = null;
+function renderTimetable(){
+  const content = document.getElementById('content');
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  if(!ttDay) ttDay = dayNameOf(new Date());
+  if(!days.includes(ttDay)) ttDay='Monday';
+
+  let html = `<div class="section-title">Weekly Timetable</div>
+    <div class="day-tabs">${days.map(d=>`<button data-d="${d}" class="${d===ttDay?'active':''}">${d.slice(0,3)}</button>`).join('')}</div>`;
+
+  const periods = TIMETABLE[ttDay]||[];
+  if(periods.length===0){
+    html += `<div class="empty-state"><span class="em">🌴</span>No classes on ${ttDay}.</div>`;
+  } else {
+    html += `<div class="stagger">` + periods.map(p=>{
+      if(p.id==='lunch'){
+        return `<div class="pass" style="--stripe:rgba(255,255,255,.25); opacity:.65;">
+          <div class="time-block"><div class="t">${fmt12(p.s)}</div><div class="dur">${fmt12(p.e)}</div></div>
+          <div class="divider"></div><div class="info"><div class="sub">🍴 Lunch Break</div></div></div>`;
+      }
+      const meta = SUBJECT_META[p.id];
+      const isLab = meta.type==='Lab';
+      return `<div class="pass" style="--stripe:${isLab?'var(--orange-500)':'var(--navy-600)'};">
+        <div class="time-block"><div class="t">${fmt12(p.s)}</div><div class="dur">${fmt12(p.e)}</div></div>
+        <div class="divider"></div>
+        <div class="info"><div class="sub">${meta.name}</div>
+        <div class="meta"><span class="tag ${isLab?'lab':'lec'}">${meta.type}</span>Room ${p.room} · ${p.fac}</div></div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+  content.innerHTML = html;
+  document.querySelectorAll('.day-tabs button').forEach(b=>{
+    b.addEventListener('click', ()=>{ttDay=b.dataset.d; renderTimetable();});
+  });
+}
+
+/* ===================================================================
+   SUBJECTS TAB
+=================================================================== */
+function renderSubjects(){
+  const content = document.getElementById('content');
+  const overall = computeOverall();
+  let html = `
+    <div class="overall-card fadein">
+      <div class="lbl">Overall Attendance</div>
+      <div class="big">${overall.pct.toFixed(2)}<span>%</span></div>
+      <div class="note">${overall.pct>=75 ? 'You can miss '+overall.canMiss+' more lectures' : 'Attend next '+overall.need+' to reach 75%'}</div>
+    </div>
+    <div class="section-title">Subject-wise Breakdown</div>
+    <div class="stagger">`;
+
+  const grouped = {};
+  for(const id in SUBJECT_META){
+    const nm = SUBJECT_META[id].name;
+    if(!grouped[nm]) grouped[nm]=[];
+    grouped[nm].push(id);
+  }
+  for(const nm in grouped){
+    grouped[nm].forEach(id=>{
+      const meta = SUBJECT_META[id];
+      const s = computeStats(id);
+      const color = pctColor(s.pct);
+      const statusTxt = s.pct>=75 ? `can miss ${s.canMiss}` : `need ${s.need} more`;
+      html += `<div class="subj-card">
+        <div class="subj-top">
+          <div><div class="nm">${meta.name}</div><div class="ty">${meta.type} · Att ${s.att} / Miss ${s.miss} / Off ${s.off} / Total ${s.tot}</div></div>
+          <div class="subj-pct" style="color:${color};">${s.tot?s.pct.toFixed(2):'—'}%</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(s.pct,100)}%; background:${color};"></div></div>
+        <div class="subj-bottom">
+          <span>Min required: 75%</span>
+          <span class="subj-status" style="background:${color}22; color:${color};">${s.tot?statusTxt:'no data'}</span>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+  content.innerHTML = html;
+}
+
+/* ===================================================================
+   CALENDAR TAB
+=================================================================== */
+function renderCalendar(){
+  const content = document.getElementById('content');
+  const now = new Date();
+  const view = new Date(now.getFullYear(), now.getMonth()+calMonthOffset, 1);
+  const y = view.getFullYear(), m = view.getMonth();
+  const firstDow = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const todayIso = isoDate(now);
+
+  let cells = '';
+  for(let i=0;i<firstDow;i++) cells += `<div></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isFest = !!FESTIVALS[iso];
+    const isExam = EXAM_TIMETABLE.some(e=>e.date===iso);
+    const isToday = iso===todayIso;
+    cells += `<div class="cal-cell ${isToday?'today':''} ${isFest?'fest':''} ${isExam?'exam':''}" title="${FESTIVALS[iso]||(isExam?'Exam':'')}">
+      <div class="dnum">${d}</div>${(isFest||isExam)?'<div class="evdot"></div>':''}
+    </div>`;
+  }
+
+  let html = `
+    <div class="cal-head">
+      <button class="btn ghost small" id="cal-prev">‹</button>
+      <div class="m">${MONTH_NAMES[m]} ${y}</div>
+      <button class="btn ghost small" id="cal-next">›</button>
+    </div>
+    <div class="cal-grid">${DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('')}${cells}</div>
+    <div class="cal-legend">
+      <span><span class="leg-dot" style="background:var(--amber);"></span>Festival / Holiday</span>
+      <span><span class="leg-dot" style="background:var(--red);"></span>Exam</span>
+    </div>
+    <div class="section-title">Upcoming Festivals & Holidays</div>
+  `;
+
+  const upcoming = Object.keys(FESTIVALS).filter(d=>daysUntil(d)>=0).sort().slice(0,8);
+  if(upcoming.length===0){
+    html += `<div class="empty-state"><span class="em">📅</span>No upcoming festivals found.</div>`;
+  } else {
+    html += upcoming.map(d=>{
+      const dt = new Date(d+'T00:00:00');
+      const dd = daysUntil(d);
+      return `<div class="fest-list-item">
+        <div class="fest-date-chip"><div class="dd">${dt.getDate()}</div><div class="mm">${MONTH_NAMES[dt.getMonth()].slice(0,3)}</div></div>
+        <div class="fest-info"><div class="nm">${FESTIVALS[d]}</div><div class="dist">${dd===0?'Today':dd===1?'Tomorrow':'In '+dd+' days'}</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  content.innerHTML = html;
+  document.getElementById('cal-prev').addEventListener('click', ()=>{calMonthOffset--; renderCalendar();});
+  document.getElementById('cal-next').addEventListener('click', ()=>{calMonthOffset++; renderCalendar();});
+}
+
+/* ===================================================================
+   EXAMS TAB
+=================================================================== */
+function renderExams(){
+  const content = document.getElementById('content');
+  let html = `<div class="section-title">Internal Exam Timetable</div>
+    <p style="color:var(--text-lo); font-size:12.5px; margin:-4px 0 16px;">Semester V · Information Technology · Odd Term 2026-27</p>`;
+
+  html += EXAM_TIMETABLE.map(ex=>{
+    const d = daysUntil(ex.date);
+    const dt = new Date(ex.date+'T00:00:00');
+    let cdText = d<0?'Done':d===0?'Today':d===1?'Tomorrow':'In '+d+'d';
+    return `<div class="exam-pass fadein">
+      <div class="cd ${d===0?'today':''}">${cdText}</div>
+      <div class="code">Boarding Pass · Div A · Sem V</div>
+      <div class="subj">${ex.subj}</div>
+      <div class="rowinfo">
+        <div>DATE<b>${MONTH_NAMES[dt.getMonth()].slice(0,3)} ${dt.getDate()}, ${ex.day}</b></div>
+        <div>TIME<b>${ex.s} – ${ex.e}</b></div>
+        <div>ROOM<b>A218</b></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  content.innerHTML = html;
+}
+
+/* ===================================================================
+   PROFILE TAB
+=================================================================== */
+function renderProfile(){
+  const content = document.getElementById('content');
+  const dob = PROFILE.dob ? new Date(PROFILE.dob+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) : '—';
+  let html = `
+    <div class="profile-hero fadein">
+      <div class="avatar" id="prof-avatar">${PROFILE.photo?`<img src="${PROFILE.photo}">`:initials(PROFILE.name)}</div>
+      <h2>${PROFILE.name}</h2>
+      <p>${PROFILE.program} · Semester ${PROFILE.sem}</p>
+    </div>
+    <div class="info-grid">
+      <div class="info-card"><div class="lbl">Enrolment No.</div><div class="val">${PROFILE.enroll||'—'}</div></div>
+      <div class="info-card"><div class="lbl">Date of Birth</div><div class="val">${dob}</div></div>
+      <div class="info-card"><div class="lbl">Email</div><div class="val">${PROFILE.email||'—'}</div></div>
+      <div class="info-card"><div class="lbl">Mobile</div><div class="val">${PROFILE.mobile||'—'}</div></div>
+      <div class="info-card"><div class="lbl">Program</div><div class="val">${PROFILE.program}</div></div>
+      <div class="info-card"><div class="lbl">Semester</div><div class="val">${PROFILE.sem}</div></div>
+    </div>
+    <div class="section-title">Manage</div>
+    <input type="file" accept="image/*" id="prof-photo-input" class="hidden">
+    <button class="btn ghost" id="btn-change-photo" style="margin-bottom:10px;">📷 Change Photo</button>
+    <button class="btn ghost" id="btn-edit-profile" style="margin-bottom:10px;">✏️ Edit Details</button>
+    <button class="btn ghost" id="btn-reset" style="border-color:rgba(229,72,77,.4); color:#ff9a9d;">🗑️ Reset All Data</button>
+  `;
+  content.innerHTML = html;
+
+  document.getElementById('btn-change-photo').addEventListener('click', ()=>document.getElementById('prof-photo-input').click());
+  document.getElementById('prof-photo-input').addEventListener('change', async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const img = new Image();
+      img.onload = async function(){
+        const canvas = document.createElement('canvas');
+        const maxDim=240; let w=img.width,h=img.height;
+        if(w>h){ if(w>maxDim){h=h*maxDim/w; w=maxDim;} } else { if(h>maxDim){w=w*maxDim/h; h=maxDim;} }
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        PROFILE.photo = canvas.toDataURL('image/jpeg',0.75);
+        await storSet('profile', PROFILE);
+        updateHeader(); renderProfile();
+        showToast('Photo updated ✔');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('btn-edit-profile').addEventListener('click', renderEditProfile);
+  document.getElementById('btn-reset').addEventListener('click', async ()=>{
+    if(confirm('This will erase your profile and attendance log from this device. Continue?')){
+      try{ await window.storage.delete('profile', false); }catch(e){}
+      try{ await window.storage.delete('attendance_log', false); }catch(e){}
+      location.reload();
+    }
+  });
+}
+
+function renderEditProfile(){
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="section-title">Edit Profile</div>
+    <div class="field"><label>Full Name</label><input id="e-name" type="text" value="${PROFILE.name}"></div>
+    <div class="field"><label>Enrolment No.</label><input id="e-enroll" type="text" value="${PROFILE.enroll||''}"></div>
+    <div class="field"><label>Date of Birth</label><input id="e-dob" type="date" value="${PROFILE.dob||''}"></div>
+    <div class="field"><label>Email</label><input id="e-email" type="email" value="${PROFILE.email||''}"></div>
+    <div class="field"><label>Mobile Number</label><input id="e-mobile" type="tel" value="${PROFILE.mobile||''}"></div>
+    <div class="field-row">
+      <div class="field"><label>Program</label><input id="e-program" type="text" value="${PROFILE.program}"></div>
+      <div class="field"><label>Semester</label><input id="e-sem" type="text" value="${PROFILE.sem}"></div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn ghost" id="e-cancel" style="width:auto;">Cancel</button>
+      <button class="btn" id="e-save">Save Changes</button>
+    </div>
+  `;
+  document.getElementById('e-cancel').addEventListener('click', renderProfile);
+  document.getElementById('e-save').addEventListener('click', async ()=>{
+    PROFILE.name = document.getElementById('e-name').value.trim() || PROFILE.name;
+    PROFILE.enroll = document.getElementById('e-enroll').value.trim();
+    PROFILE.dob = document.getElementById('e-dob').value;
+    PROFILE.email = document.getElementById('e-email').value.trim();
+    PROFILE.mobile = document.getElementById('e-mobile').value.trim();
+    PROFILE.program = document.getElementById('e-program').value.trim();
+    PROFILE.sem = document.getElementById('e-sem').value.trim();
+    await storSet('profile', PROFILE);
+    updateHeader();
+    checkBirthday();
+    renderProfile();
+    showToast('Profile updated ✔');
+  });
+}
+
+/* ===================================================================
+   TOAST
+=================================================================== */
+function showToast(msg){
+  const t = document.createElement('div');
+  t.className='toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2600);
+}
+
+/* live-refresh the Today tab clock context every 60s */
+setInterval(()=>{
+  const activeTab = document.querySelector('nav.bottomnav button.active');
+  if(activeTab && activeTab.dataset.tab==='today') renderToday();
+}, 60000);
+</script>
+</body>
+</html>
